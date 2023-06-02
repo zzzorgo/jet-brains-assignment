@@ -1,0 +1,20 @@
+.VirtualList {
+  position: relative;
+  height: 500px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.VirtualList__Item {
+  position: absolute;
+}
+
+
+/* todo: naming */
+.VirtualList__ItemDivider {
+  height: 1px;
+  width: 100%;
+  background-color: black;
+  position: relative;
+}
