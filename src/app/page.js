@@ -1,12 +1,12 @@
 import styles from './page.module.css'
-import { Some } from './VirtualList'
+import { VirtualList } from './VirtualList'
 import data from '../../mock/data.json';
-import { getDataSlice } from '@/utils/getDataSlice';
+import { getMessagesSlice } from '@/utils/getDataSlice';
 
 export default function Home() {
   return (
     <main className={styles.main}>
-      <Some data={getDataSlice(0, 10)} />
+      <VirtualList initialMessages={getMessagesSlice(0, 100)} />
     </main>
   )
 }
