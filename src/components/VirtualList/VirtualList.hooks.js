@@ -25,7 +25,7 @@ export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) =>
             nextTopElement++;
         }
 
-        nextTopElement = (Math.min(nextTopElement + 5, lastLoadedElement));
+        nextTopElement = (Math.min(nextTopElement + 20, lastLoadedElement));
 
         let nextBottomElement = bottomElement;
 
@@ -37,7 +37,7 @@ export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) =>
             nextBottomElement++;
         }
 
-        nextBottomElement = (Math.max(nextBottomElement - 5, 0));
+        nextBottomElement = (Math.max(nextBottomElement - 20, 0));
 
         return { nextTopElement, nextBottomElement };
     };

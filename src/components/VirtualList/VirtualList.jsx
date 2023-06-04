@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './VirtualList.module.css';
 import { VirtualListItem } from './VirtualList__Item';
-import { useWidthChanged } from './hooks';
+import { useWidthChanged } from '@/utils/hooks';
 import { useRenderedSlice } from './VirtualList.hooks';
 
 const LIFECYCLE_PHASES = {
@@ -171,7 +171,8 @@ export const VirtualList = ({ initialMessages }) => {
                         top={tops[item.id]}
                         height={rectsRef.current[item.id]?.height}
                     >
-                        {item.body} {item.id}
+                        <div className={styles.VirtualList__ItemHeader}>{item.id}</div>
+                        <div>{item.body}</div>
                     </VirtualListItem>
                 ))}
             </div>

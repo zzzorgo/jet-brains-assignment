@@ -1,0 +1,20 @@
+.VirtualList {
+  position: relative;
+  height: 100%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+
+.VirtualList__Item {
+  position: absolute;
+  padding-top: 20px;
+  font-size: 10px;
+}
+
+.VirtualList__ItemHeader {
+  font-weight: bold;
+}
