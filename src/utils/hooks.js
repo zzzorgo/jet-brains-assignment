@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 
-export const useWidthChanged = (callback, observedElementRef, enabled) => {
+export const useWidthChanged = (callback, observedElementRef, enabled, callback2) => {
     const prevWidth = useRef(0);
+    const prevHeight = useRef(0);
     const resizeObserver = useRef(null);
 
     useEffect(() => {
@@ -15,9 +16,11 @@ export const useWidthChanged = (callback, observedElementRef, enabled) => {
                     prevWidth.current = entry.contentRect.width;
                     callback();
                 }
+
+                callback2(entry.contentRect.height)
             });
         });
 
         resizeObserver.current.observe(observedElementRef.current);
-    }, [callback, enabled, observedElementRef]);
+    }, [callback, callback2, enabled, observedElementRef]);
 };
