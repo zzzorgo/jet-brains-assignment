@@ -12,9 +12,11 @@
 .VirtualList__Item {
   position: absolute;
   padding-top: 20px;
-  font-size: 10px;
 }
 
-.VirtualList__ItemHeader {
-  font-weight: bold;
+.VirtualList__Loader {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
 }
