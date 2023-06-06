@@ -3,19 +3,20 @@
 import { useRef, useState } from 'react';
 import styles from './VirtualList.module.css';
 import { VirtualListItem } from './VirtualList__Item';
-import { useInit, useItemLoader, useRenderedSlice, useResizeLayout, useWidthChanged } from './hooks';
+import { useInit, useItemLoader, useLifecyclePhases, useRenderedSlice, useResizeLayout, useWidthChanged } from './hooks';
 import { VirtualListLoader } from './VirtualList__Loader';
-import { LIFECYCLE_PHASES, SCROLL_DIRECTIONS } from './constants';
+import { LIFECYCLE_PHASES, LOAD_NEXT_OFFSET, SCROLL_DIRECTIONS } from './constants';
 import { LOADING_STATUS } from '@/clientApi/constants';
 import { getTotalHeight } from './utils';
 
 export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
-  const [lifeCyclePhase, setLifecyclePhase] = useState(LIFECYCLE_PHASES.Init);
-
   // todo: replace with custom structure
   const itemRectsRef = useRef({});
+  const scrollContainerRef = useRef(null);
   const containerRef = useRef(null);
   const prevTotalHeightRef = useRef(0);
+  const prevScrollRef = useRef(0);
+  const scrollDirectionRef = useRef(SCROLL_DIRECTIONS.None);
 
   const rectEntries = Object.entries(itemRectsRef.current);
   const totalHeight = getTotalHeight(rectEntries);
@@ -30,33 +31,56 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
     bottomElement,
   } = useRenderedSlice(items[items.length - 1].id, rectEntries, totalHeight);
 
-  useInit(totalHeight, containerRef, prevTotalHeightRef, lifeCyclePhase, setLifecyclePhase);
-  const { onScroll, scrollContainerRef } = useResizeLayout(totalHeight, containerRef, prevTotalHeightRef, lifeCyclePhase, setLifecyclePhase);
+  const { lifeCyclePhase, setLifecyclePhase } = useLifecyclePhases({
+    onScrollToBottom: () => {
+      scrollContainerRef.current.scrollBy(0, Number.MAX_SAFE_INTEGER);
+      prevTotalHeightRef.current = totalHeight;
+    },
+    onResizeLayout: () => {
+      containerRef.current.style.height = `${totalHeight}px`;
+
+      const diff = totalHeight - prevTotalHeightRef.current;
+
+      if (scrollDirectionRef.current === SCROLL_DIRECTIONS.Up) {
+        scrollContainerRef.current.scrollBy(0, diff);
+      }
+
+      prevTotalHeightRef.current = totalHeight;
+    },
+  });
+
+  const updateScrollData = (currentScroll) => {
+    scrollDirectionRef.current = (currentScroll - prevScrollRef.current) < 0
+      ? SCROLL_DIRECTIONS.Up
+      : SCROLL_DIRECTIONS.Down;
+    prevScrollRef.current = currentScroll;
+  };
 
   useWidthChanged(
+    // why math.random
     () => setLifecyclePhase(LIFECYCLE_PHASES.ResizeLayout + Math.random()),
-    containerRef,
+    scrollContainerRef,
     lifeCyclePhase === LIFECYCLE_PHASES.Ready
   );
 
   // todo: measure useCallback impact
   const scrollHandler = async (e) => {
     const currentScroll = e.target.scrollTop;
-    const containerRect = containerRef.current.getBoundingClientRect();
 
-    const needToLoadMoreItems = currentScroll < 1000
-      && lifeCyclePhase === LIFECYCLE_PHASES.Ready
-      && loadingStatus !== LOADING_STATUS.Loading;
+    const needToLoadMoreItems = currentScroll < LOAD_NEXT_OFFSET
+    && lifeCyclePhase === LIFECYCLE_PHASES.Ready
+    && loadingStatus !== LOADING_STATUS.Loading;
 
     if (needToLoadMoreItems) {
       const lastElement = await loadNext();
 
       setTopElement(lastElement);
     } else {
-      setNextTopAndBottomElements(currentScroll, containerRect);
+      const scrollContainerRect = scrollContainerRef.current.getBoundingClientRect();
+      setNextTopAndBottomElements(currentScroll, scrollContainerRect);
     }
 
-    onScroll(currentScroll);
+    updateScrollData(currentScroll);
   };
 
   const getUpdateRectHandler = (id) => (rect) => {
@@ -77,13 +101,13 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
     /* todo: do not use style */
     <div
       className={styles.VirtualList}
-      onScroll={scrollHandler} ref={containerRef}
+      onScroll={scrollHandler} ref={scrollContainerRef}
       style={{
         opacity: lifeCyclePhase === LIFECYCLE_PHASES.Init ? 0 : 1,
       }}
     >
       {loadingStatus === LOADING_STATUS.Loading && <VirtualListLoader className={styles.VirtualList__Loader} />}
-      <div ref={scrollContainerRef}>
+      <div ref={containerRef}>
         {itemsToRender.map((item) => (
           <VirtualListItem
             className={styles.VirtualList__Item}

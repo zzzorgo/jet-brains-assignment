@@ -10,3 +10,7 @@ export const SCROLL_DIRECTIONS = {
     Down: 'Down',
     None: 'None',
 };
+
+export const LOAD_NEXT_OFFSET = 1000;
+
+export const BUFFERED_ITEMS_COUNT = 40;

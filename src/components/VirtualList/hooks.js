@@ -1,6 +1,7 @@
 import { LOADING_STATUS } from '@/clientApi/constants';
 import { useEffect, useRef, useState } from 'react';
-import { LIFECYCLE_PHASES, SCROLL_DIRECTIONS } from './constants';
+import { BUFFERED_ITEMS_COUNT, LIFECYCLE_PHASES, SCROLL_DIRECTIONS } from './constants';
+import { noop } from '@/utils/noop';
 
 export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) => {
   const [bottomElement, setBottomElement] = useState(0);
@@ -27,7 +28,7 @@ export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) =>
       nextTopElement++;
     }
 
-    nextTopElement = (Math.min(nextTopElement + 40, lastLoadedElement));
+    nextTopElement = (Math.min(nextTopElement + BUFFERED_ITEMS_COUNT, lastLoadedElement));
 
     let nextBottomElement = bottomElement;
 
@@ -39,7 +40,7 @@ export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) =>
       nextBottomElement++;
     }
 
-    nextBottomElement = (Math.max(nextBottomElement - 40, 0));
+    nextBottomElement = (Math.max(nextBottomElement - BUFFERED_ITEMS_COUNT, 0));
 
     return { nextTopElement, nextBottomElement };
   };
@@ -107,48 +108,28 @@ export const useWidthChanged = (callback, observedElementRef, enabled) => {
   }, [callback, enabled, observedElementRef]);
 };
 
-export const useInit = (totalHeight, containerRef, prevTotalHeightRef, lifeCyclePhase, setLifecyclePhase) => {
+export const useLifecyclePhases = ({
+  onInit = noop,
+  onScrollToBottom = noop,
+  onResizeLayout = noop,
+  onReady = noop,
+}) => {
+  const [lifeCyclePhase, setLifecyclePhase] = useState(LIFECYCLE_PHASES.Init);
+
   useEffect(() => {
     if (lifeCyclePhase === LIFECYCLE_PHASES.Init) {
+      onInit();
       setLifecyclePhase(LIFECYCLE_PHASES.ScrollToBottom);
-    }
-  }, [lifeCyclePhase, setLifecyclePhase]);
-
-  useEffect(() => {
-    if (lifeCyclePhase === LIFECYCLE_PHASES.ScrollToBottom) {
-      containerRef.current.scrollBy(0, Number.MAX_SAFE_INTEGER);
-      prevTotalHeightRef.current = totalHeight;
+    } else if (lifeCyclePhase === LIFECYCLE_PHASES.ScrollToBottom) {
+      onScrollToBottom();
       setLifecyclePhase(LIFECYCLE_PHASES.Ready);
-    }
-  }, [lifeCyclePhase, setLifecyclePhase, totalHeight, containerRef, prevTotalHeightRef]);
-};
-
-export const useResizeLayout = (totalHeight, containerRef, prevTotalHeightRef, lifeCyclePhase, setLifecyclePhase) => {
-  const prevScrollRef = useRef(0);
-  const scrollDirectionRef = useRef(SCROLL_DIRECTIONS.None);
-  const scrollContainerRef = useRef(null);
-
-  useEffect(() => {
-    // using ref to have proper update order
-    scrollContainerRef.current.style.height = `${totalHeight}px`;
-
-    if (lifeCyclePhase.startsWith(LIFECYCLE_PHASES.ResizeLayout)) {
-      const diff = totalHeight - prevTotalHeightRef.current;
-
-      if (scrollDirectionRef.current === SCROLL_DIRECTIONS.Up) {
-        containerRef.current.scrollBy(0, diff);
-      }
-
-      prevTotalHeightRef.current = totalHeight;
+    } else if (lifeCyclePhase.startsWith(LIFECYCLE_PHASES.ResizeLayout)) {
+      onResizeLayout();
       setLifecyclePhase(LIFECYCLE_PHASES.Ready);
+    } else if (lifeCyclePhase === LIFECYCLE_PHASES.Ready) {
+      onReady();
     }
-  }, [lifeCyclePhase, totalHeight, setLifecyclePhase, containerRef, prevTotalHeightRef]);
+  }, [lifeCyclePhase, onInit, onReady, onResizeLayout, onScrollToBottom]);
 
-  return {
-    onScroll: (currentScroll) => {
-      scrollDirectionRef.current = currentScroll - prevScrollRef.current < 0 ? SCROLL_DIRECTIONS.Up : SCROLL_DIRECTIONS.Down;
-      prevScrollRef.current = currentScroll;
-    },
-    scrollContainerRef,
-  };
+  return { lifeCyclePhase, setLifecyclePhase };
 };
