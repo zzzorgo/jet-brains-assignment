@@ -2,6 +2,7 @@ export const LIFECYCLE_PHASES = {
     Init: 'Init',
     Ready: 'Ready',
     ResizeLayout: 'ResizeLayout',
+    WaitForResizeLayout: 'WaitForResizeLayout',
     ScrollToBottom: 'ScrollToBottom',
 };
 

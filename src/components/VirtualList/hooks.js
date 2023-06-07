@@ -60,7 +60,7 @@ export const useItemLoader = (initialItems, loader) => {
   const [loadingStatus, setLoadingStatus] = useState(LOADING_STATUS.NotSent);
   const loadingStatusRef = useRef(LOADING_STATUS.NotSent);
 
-  const loadNext = async () => {
+  const loadNext = async (counter) => {
     let lastLoadedItem = items[items.length - 1].id;
 
     if (loadingStatusRef.current === LOADING_STATUS.Loading) {
@@ -79,6 +79,7 @@ export const useItemLoader = (initialItems, loader) => {
 
     setLoadingStatus(LOADING_STATUS.Success);
     loadingStatusRef.current = LOADING_STATUS.Success;
+    console.log('loadNext finished', counter);
 
     return lastLoadedItem;
   };

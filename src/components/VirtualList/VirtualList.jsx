@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import styles from './VirtualList.module.css';
 import { VirtualListItem } from './VirtualList__Item';
-import { useInit, useItemLoader, useLifecyclePhases, useRenderedSlice, useResizeLayout, useWidthChanged } from './hooks';
+import { useItemLoader, useLifecyclePhases, useRenderedSlice, useWidthChanged } from './hooks';
 import { VirtualListLoader } from './VirtualList__Loader';
 import { LIFECYCLE_PHASES, LOAD_NEXT_OFFSET, SCROLL_DIRECTIONS } from './constants';
 import { LOADING_STATUS } from '@/clientApi/constants';
@@ -49,13 +49,6 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
     },
   });
 
-  const updateScrollData = (currentScroll) => {
-    scrollDirectionRef.current = (currentScroll - prevScrollRef.current) < 0
-      ? SCROLL_DIRECTIONS.Up
-      : SCROLL_DIRECTIONS.Down;
-    prevScrollRef.current = currentScroll;
-  };
-
   useWidthChanged(
     // why math.random
     () => setLifecyclePhase(LIFECYCLE_PHASES.ResizeLayout + Math.random()),
@@ -63,24 +56,30 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
     lifeCyclePhase === LIFECYCLE_PHASES.Ready
   );
 
-  // todo: measure useCallback impact
+  const updateScrollData = (currentScroll) => {
+    scrollDirectionRef.current = (currentScroll - prevScrollRef.current) < 0
+      ? SCROLL_DIRECTIONS.Up
+      : SCROLL_DIRECTIONS.Down;
+    prevScrollRef.current = currentScroll;
+  };
+
   const scrollHandler = async (e) => {
     const currentScroll = e.target.scrollTop;
+    updateScrollData(currentScroll);
 
     const needToLoadMoreItems = currentScroll < LOAD_NEXT_OFFSET
-    && lifeCyclePhase === LIFECYCLE_PHASES.Ready
-    && loadingStatus !== LOADING_STATUS.Loading;
+      && lifeCyclePhase === LIFECYCLE_PHASES.Ready
+      && loadingStatus !== LOADING_STATUS.Loading;
 
     if (needToLoadMoreItems) {
       const lastElement = await loadNext();
 
       setTopElement(lastElement);
+      setLifecyclePhase(LIFECYCLE_PHASES.WaitForResizeLayout);
     } else {
       const scrollContainerRect = scrollContainerRef.current.getBoundingClientRect();
       setNextTopAndBottomElements(currentScroll, scrollContainerRect);
     }
-
-    updateScrollData(currentScroll);
   };
 
   const getUpdateRectHandler = (id) => (rect) => {
