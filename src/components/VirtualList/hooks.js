@@ -1,7 +1,8 @@
-import { LOADING_STATUS } from '@/clientApi/constants';
 import { useEffect, useRef, useState } from 'react';
-import { BUFFERED_ITEMS_COUNT, LIFECYCLE_PHASES, SCROLL_DIRECTIONS } from './constants';
+
 import { noop } from '@/utils/noop';
+
+import { BUFFERED_ITEMS_COUNT, LIFECYCLE_PHASES, LOADING_STATUS, PAGE_SIZE } from './constants';
 
 export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) => {
   const [bottomElement, setBottomElement] = useState(0);
@@ -54,13 +55,17 @@ export const useRenderedSlice = (lastLoadedElement, rectEntries, totalHeight) =>
   return { setNextTopAndBottomElements, calculatedItemTops, setTopElement, setBottomElement, bottomElement, topElement };
 };
 
-export const useItemLoader = (initialItems, loader) => {
+export const useItemFetcher = (initialItems, fetcher) => {
   const [items, setItems] = useState(initialItems);
-  // todo: why both ref ans state
+  /**
+   * both useRef and useState for `loadingStatus` are used here to prevent
+   * the fetcher function to be called multiple times as soon as the fetching
+   * is started (not when the state is finally updated)
+   */
   const [loadingStatus, setLoadingStatus] = useState(LOADING_STATUS.NotSent);
   const loadingStatusRef = useRef(LOADING_STATUS.NotSent);
 
-  const loadNext = async (counter) => {
+  const fetchNext = async () => {
     let lastLoadedItem = items[items.length - 1].id;
 
     if (loadingStatusRef.current === LOADING_STATUS.Loading) {
@@ -70,7 +75,7 @@ export const useItemLoader = (initialItems, loader) => {
     setLoadingStatus(LOADING_STATUS.Loading);
     loadingStatusRef.current = LOADING_STATUS.Loading;
 
-    const newItems = await loader(lastLoadedItem + 1);
+    const newItems = await fetcher(lastLoadedItem + 1, PAGE_SIZE);
 
     if (newItems.length > 0) {
       setItems([...items, ...newItems]);
@@ -79,12 +84,11 @@ export const useItemLoader = (initialItems, loader) => {
 
     setLoadingStatus(LOADING_STATUS.Success);
     loadingStatusRef.current = LOADING_STATUS.Success;
-    console.log('loadNext finished', counter);
 
     return lastLoadedItem;
   };
 
-  return { items, loadingStatus, loadNext };
+  return { items, loadingStatus, fetchNext };
 };
 
 export const useWidthChanged = (callback, observedElementRef, enabled) => {

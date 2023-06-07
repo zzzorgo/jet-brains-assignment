@@ -1,3 +1,5 @@
+# Virtual List (JetBrains assignment)
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -5,18 +7,17 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 First, run the development server:
 
 ```bash
+npm install
 npm run dev
 # or
+yarn install
 yarn dev
 # or
+pnpm install
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
 ## Learn More
 
@@ -27,8 +28,15 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## File structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The file structure of the project is partially dictated by the Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+* `/mock` - the directory containing mock data with 100 000 mock messages and a very simple script to generate a different set if needed.
+* `/src/clientApi` - the directory with client side data fetchers
+* `/src/components` - the directory with all the react components of this project except for so-called `pages` which are used by Next.js to create page routes based on file structure
+* `/src/pages` - the directory defining page routes
+    * _app.js - root component for Next.js app. Required to set global styles
+    * global.css - global Next.js styles
+* `/src/pages/api` - the directory defining api routes
+* `/src/utils` - the directory with general helpers

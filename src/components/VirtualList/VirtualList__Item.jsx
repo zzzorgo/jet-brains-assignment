@@ -6,6 +6,7 @@ export const VirtualListItem = ({ children, className, updateRect, top }) => {
     const ref = useRef(null);
 
     useEffect(() => {
+        // possible bottleneck because of reflow
         const rect = ref.current.getBoundingClientRect();
         updateRect(rect);
     });

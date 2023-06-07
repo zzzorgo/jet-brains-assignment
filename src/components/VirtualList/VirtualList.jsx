@@ -1,16 +1,16 @@
 'use client';
 
 import { useRef } from 'react';
-import styles from './VirtualList.module.css';
+
 import { VirtualListItem } from './VirtualList__Item';
-import { useItemLoader, useLifecyclePhases, useRenderedSlice, useWidthChanged } from './hooks';
+import { useItemFetcher, useLifecyclePhases, useRenderedSlice, useWidthChanged } from './hooks';
 import { VirtualListLoader } from './VirtualList__Loader';
-import { LIFECYCLE_PHASES, LOAD_NEXT_OFFSET, SCROLL_DIRECTIONS } from './constants';
-import { LOADING_STATUS } from '@/clientApi/constants';
+import { LIFECYCLE_PHASES, LOADING_STATUS, LOAD_NEXT_OFFSET, SCROLL_DIRECTIONS } from './constants';
 import { getTotalHeight } from './utils';
 
-export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
-  // todo: replace with custom structure
+import styles from './VirtualList.module.css';
+
+export const VirtualList = ({ initialItems, ItemComponent, fetcher }) => {
   const itemRectsRef = useRef({});
   const scrollContainerRef = useRef(null);
   const containerRef = useRef(null);
@@ -18,25 +18,41 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
   const prevScrollRef = useRef(0);
   const scrollDirectionRef = useRef(SCROLL_DIRECTIONS.None);
 
+  /**
+   * the two lines bellow may be a bottleneck in case of a huge amount of
+   * items because of O(n) time complexity
+   */
   const rectEntries = Object.entries(itemRectsRef.current);
   const totalHeight = getTotalHeight(rectEntries);
 
-  const { items, loadingStatus, loadNext } = useItemLoader(initialItems, loader);
+  const { items, loadingStatus, fetchNext } = useItemFetcher(initialItems, fetcher);
 
+  /**
+   * To render only the items that are visible in the viewport plus some extra
+   * from the top and the bottom.
+   */
   const {
     calculatedItemTops,
-    setNextTopAndBottomElements,
-    setTopElement,
     topElement,
     bottomElement,
+    setTopElement,
+    setNextTopAndBottomElements,
   } = useRenderedSlice(items[items.length - 1].id, rectEntries, totalHeight);
 
+  /**
+   * To control the lifecycle of the virtual list in a more granular way
+   * we use a `lifeCyclePhase` state which is updated only when needed. Mostly it is
+   * utilized to trigger the first render of the new items and adjust the list to the
+   * newly added items on the second render, but also to perform initialization and 
+   * prevent excessive api calls.
+   */
   const { lifeCyclePhase, setLifecyclePhase } = useLifecyclePhases({
     onScrollToBottom: () => {
       scrollContainerRef.current.scrollBy(0, Number.MAX_SAFE_INTEGER);
       prevTotalHeightRef.current = totalHeight;
     },
     onResizeLayout: () => {
+      // setting this directly so to control the relative order of height update and scroll (bellow)
       containerRef.current.style.height = `${totalHeight}px`;
 
       const diff = totalHeight - prevTotalHeightRef.current;
@@ -49,8 +65,12 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
     },
   });
 
+  /**
+   * To trigger the resize layout phase when the width of the virtual list changes.
+   * Math.random generates seed to trigger the resize layout phase on every width change
+   * in case of frequent width changes.
+   */
   useWidthChanged(
-    // why math.random
     () => setLifecyclePhase(LIFECYCLE_PHASES.ResizeLayout + Math.random()),
     scrollContainerRef,
     lifeCyclePhase === LIFECYCLE_PHASES.Ready
@@ -72,11 +92,20 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
       && loadingStatus !== LOADING_STATUS.Loading;
 
     if (needToLoadMoreItems) {
-      const lastElement = await loadNext();
+      const lastElement = await fetchNext();
 
+      // to expand the rendered slice to render all the new items and measure their height
       setTopElement(lastElement);
+      /**
+       * to prevent excessive api calls we should wait for the resize layout phase
+       * which is triggered by getUpdateRectHandler after the new items are rendered
+       */
       setLifecyclePhase(LIFECYCLE_PHASES.WaitForResizeLayout);
     } else {
+      /**
+       * amount of reflows here could be optimized by utilizing resize observer
+       * and measuring the height only when the height of the scroll container changes
+       */
       const scrollContainerRect = scrollContainerRef.current.getBoundingClientRect();
       setNextTopAndBottomElements(currentScroll, scrollContainerRect);
     }
@@ -89,6 +118,10 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
     }
   };
 
+  /**
+   * may be a bottleneck in case of a huge amount of
+   * items because of O(n) time complexity
+   */
   const itemsToRender = items.filter(item => {
     const withinRenderedSlice = item.id <= topElement && item.id >= bottomElement;
     const needToRenderEverything = lifeCyclePhase === LIFECYCLE_PHASES.Init;
@@ -97,7 +130,6 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
   });
 
   return (
-    /* todo: do not use style */
     <div
       className={styles.VirtualList}
       onScroll={scrollHandler} ref={scrollContainerRef}
@@ -113,7 +145,6 @@ export const VirtualList = ({ initialItems, ItemComponent, loader }) => {
             key={item.id}
             updateRect={getUpdateRectHandler(item.id)}
             top={calculatedItemTops[item.id]}
-            height={itemRectsRef.current[item.id]?.height}
           >
             <ItemComponent item={item} />
           </VirtualListItem>
